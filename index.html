@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exportador e Gerenciador de Contatos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Biblioteca para ler arquivos Excel (XLS, XLSX) e CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .file-input-label {
+            transition: all 0.2s ease-in-out;
+        }
+        .file-input-label:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-5xl bg-white rounded-2xl shadow-lg p-6 md:p-10 space-y-8">
+        
+        <!-- Cabeçalho -->
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-indigo-600">Gerenciador e Exportador de Contatos</h1>
+            <p class="text-gray-500 mt-2">Construa seu banco de dados, filtre por DDD e exporte em lotes.</p>
+        </div>
+        
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Coluna da Esquerda: Importação e Filtros -->
+            <div class="space-y-6">
+                 <!-- Passo 1: Carregar Arquivo -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-700 mb-2">1. Adicionar Contatos</h2>
+                    <label for="fileInput" class="file-input-label flex flex-col items-center justify-center w-full h-40 px-4 transition bg-white border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-indigo-500 hover:bg-gray-100">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Clique para carregar</span> ou arraste</p>
+                            <p class="text-xs text-gray-500">Arquivos .CSV, .XLS ou .XLSX</p>
+                        </div>
+                        <input id="fileInput" type="file" class="hidden" accept=".csv, .xls, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+                    </label>
+                    <p id="fileName" class="text-center text-sm text-gray-500 mt-2"></p>
+                    <button id="addContactsButton" class="mt-2 w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100" disabled>
+                        Adicionar Contatos ao Banco de Dados
+                    </button>
+                </div>
+
+                <!-- Passo 2: Filtros -->
+                <div class="pt-4 border-t">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-2">2. Filtrar Contatos</h2>
+                     <label for="dddFilter" class="block text-sm font-medium text-gray-700">Filtrar por DDD (Ex: 62)</label>
+                    <div class="flex items-center space-x-2 mt-1">
+                        <input type="text" id="dddFilter" class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="Digite o DDD sem o zero">
+                        <button id="filterButton" class="bg-blue-500 text-white font-semibold py-3 px-5 rounded-lg hover:bg-blue-600">Filtrar</button>
+                        <button id="clearFilterButton" class="bg-gray-500 text-white font-semibold py-3 px-5 rounded-lg hover:bg-gray-600">Limpar</button>
+                    </div>
+                </div>
+
+                 <!-- Passo 3: Exportação -->
+                 <div class="pt-4 border-t">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-2">3. Exportar para CSV</h2>
+                    <label for="chunkSize" class="block text-sm font-medium text-gray-700">Tamanho do lote para exportação</label>
+                    <input type="number" id="chunkSize" value="200" class="mt-1 w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                </div>
+                 <div class="pt-4 border-t">
+                    <h2 class="text-lg font-semibold text-red-600 mb-2">Zona de Perigo</h2>
+                    <button id="clearStorageButton" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 transition">
+                        Apagar TODOS os Contatos Salvos
+                    </button>
+                 </div>
+            </div>
+            <!-- Coluna da Direita: Resultados -->
+            <div id="results" class="space-y-4">
+                <div id="summary" class="text-center bg-indigo-50 p-4 rounded-lg min-h-[80px]">
+                    <!-- Resumo será inserido aqui -->
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Contatos no Banco de Dados:</h3>
+                    <div class="overflow-auto max-h-64 border border-gray-200 rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTable" class="bg-white divide-y divide-gray-200">
+                                <!-- Linhas da tabela serão inseridas aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Arquivos para Download:</h3>
+                    <div id="exportButtons" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <!-- Botões de download serão inseridos aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const chunkSizeInput = document.getElementById('chunkSize');
+        const addContactsButton = document.getElementById('addContactsButton');
+        const resultsDiv = document.getElementById('results');
+        const summaryDiv = document.getElementById('summary');
+        const previewTable = document.getElementById('previewTable');
+        const exportButtonsDiv = document.getElementById('exportButtons');
+        const fileNameDisplay = document.getElementById('fileName');
+        const dddFilterInput = document.getElementById('dddFilter');
+        const filterButton = document.getElementById('filterButton');
+        const clearFilterButton = document.getElementById('clearFilterButton');
+        const clearStorageButton = document.getElementById('clearStorageButton');
+
+        let allContacts = [];
+        let currentlyDisplayedContacts = [];
+
+        // --- Funções de Armazenamento Local ---
+        const saveContactsToStorage = () => {
+            localStorage.setItem('contatosApp', JSON.stringify(allContacts));
+        };
+
+        const loadContactsFromStorage = () => {
+            const storedContacts = localStorage.getItem('contatosApp');
+            return storedContacts ? JSON.parse(storedContacts) : [];
+        };
+
+        // --- Normalização e Validação ---
+        const normalizePhoneNumber = (phone) => {
+            return String(phone).replace(/\D/g, ''); // Remove todos os não-dígitos
+        };
+        
+        const isLikelyPhoneNumber = (str) => {
+            if (!str || typeof str !== 'string') return false;
+            const digitCount = (str.match(/\d/g) || []).length;
+            const letterCount = (str.match(/[a-zA-Z]/g) || []).length;
+            const isMostlyDigits = str.length > 0 && digitCount / str.length > 0.8;
+            return str.startsWith('+') || (isMostlyDigits && letterCount < 3);
+        };
+
+        // --- Lógica Principal ---
+        const processData = (data) => {
+            let newContactsAdded = 0;
+            let duplicatesFound = 0;
+            const existingNumbers = new Set(allContacts.map(c => normalizePhoneNumber(c.number)));
+            
+            try {
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+                if (jsonData.length <= 1) return; // Se não houver dados ou só cabeçalho
+
+                const rowsToProcess = jsonData.slice(1);
+                
+                rowsToProcess.forEach(row => {
+                    if (row && row.length >= 2) {
+                        const number = String(row[0]).trim();
+                        const name = String(row[1]).trim();
+                        const normalizedNumber = normalizePhoneNumber(number);
+
+                        if (name && number && normalizedNumber.length > 8 && !isLikelyPhoneNumber(name)) {
+                            if (!existingNumbers.has(normalizedNumber)) {
+                                allContacts.push({ name, number });
+                                existingNumbers.add(normalizedNumber);
+                                newContactsAdded++;
+                            } else {
+                                duplicatesFound++;
+                            }
+                        }
+                    }
+                });
+
+                saveContactsToStorage();
+                summaryDiv.innerHTML = `
+                    <p class="text-green-700 font-semibold">Processamento concluído!</p>
+                    <p class="text-sm text-gray-600">Adicionados: <span class="font-bold">${newContactsAdded}</span> novos contatos.</p>
+                    <p class="text-sm text-gray-600">Duplicados ignorados: <span class="font-bold">${duplicatesFound}</span>.</p>
+                `;
+                applyFiltersAndDisplay();
+            } catch (e) {
+                console.error("Erro ao processar o arquivo:", e);
+                summaryDiv.innerHTML = '<p class="text-red-600 font-medium">Ocorreu um erro ao ler o arquivo. Verifique o formato.</p>';
+            }
+        };
+        
+        const applyFiltersAndDisplay = () => {
+            const ddd = dddFilterInput.value.trim();
+            if (ddd && /^\d{2}$/.test(ddd)) {
+                 currentlyDisplayedContacts = allContacts.filter(contact => {
+                    const normalized = normalizePhoneNumber(contact.number);
+                    // Checa se começa com 55 + DDD ou se não tem 55 e começa com o DDD
+                    return normalized.startsWith(`55${ddd}`) || (normalized.length === 10 || normalized.length === 11 && normalized.startsWith(ddd));
+                 });
+            } else {
+                currentlyDisplayedContacts = [...allContacts];
+            }
+            updateDisplay(currentlyDisplayedContacts);
+        };
+        
+        const updateDisplay = (contactsToDisplay) => {
+            previewTable.innerHTML = '';
+            exportButtonsDiv.innerHTML = '';
+
+            const totalInDb = allContacts.length;
+            const totalDisplayed = contactsToDisplay.length;
+            
+            if (totalInDb === 0 && summaryDiv.innerHTML.includes('Processamento')) {
+                // Não sobrescrever a mensagem de processamento se o DB estava vazio
+            } else if (totalDisplayed === 0) {
+                 summaryDiv.innerHTML = `<p class="text-gray-700 font-medium">Seu banco de dados tem <span class="font-bold">${totalInDb}</span> contatos. Nenhum contato corresponde ao filtro atual.</p>`;
+            } else {
+                summaryDiv.innerHTML = `<p class="text-indigo-800 font-semibold">Exibindo <span class="font-bold">${totalDisplayed}</span> de <span class="font-bold">${totalInDb}</span> contatos totais.</p>`;
+            }
+
+
+            const previewLimit = Math.min(100, contactsToDisplay.length);
+            for (let i = 0; i < previewLimit; i++) {
+                const contact = contactsToDisplay[i];
+                const row = `<tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${contact.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${contact.number}</td>
+                </tr>`;
+                previewTable.innerHTML += row;
+            }
+
+            const chunkSize = parseInt(chunkSizeInput.value, 10) || 200;
+            const numChunks = Math.ceil(totalDisplayed / chunkSize);
+
+            if (totalDisplayed > 0) {
+                 for (let i = 0; i < numChunks; i++) {
+                    const button = document.createElement('button');
+                    button.innerText = `Baixar Lote ${i + 1}`;
+                    button.className = 'bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 transition-transform transform hover:scale-105 text-sm';
+                    button.onclick = () => downloadChunk(i);
+                    exportButtonsDiv.appendChild(button);
+                }
+            }
+        };
+
+        const downloadChunk = (chunkIndex) => {
+            const chunkSize = parseInt(chunkSizeInput.value, 10) || 200;
+            const start = chunkIndex * chunkSize;
+            const end = start + chunkSize;
+            const chunkData = currentlyDisplayedContacts.slice(start, end);
+
+            let csvContent = 'Nome,Numero\r\n';
+            chunkData.forEach(contact => {
+                const name = contact.name.includes(',') ? `"${contact.name}"` : contact.name;
+                csvContent += `${name},${contact.number}\r\n`;
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `contatos_lote_${chunkIndex + 1}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        // --- Event Listeners ---
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                addContactsButton.disabled = false;
+                fileNameDisplay.textContent = `Arquivo selecionado: ${fileInput.files[0].name}`;
+            } else {
+                addContactsButton.disabled = true;
+                fileNameDisplay.textContent = '';
+            }
+        });
+        
+        addContactsButton.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => processData(event.target.result);
+            reader.readAsArrayBuffer(file);
+        });
+
+        filterButton.addEventListener('click', applyFiltersAndDisplay);
+        clearFilterButton.addEventListener('click', () => {
+            dddFilterInput.value = '';
+            applyFiltersAndDisplay();
+        });
+
+        clearStorageButton.addEventListener('click', () => {
+            if (confirm('Tem certeza que deseja apagar TODOS os contatos salvos? Esta ação não pode ser desfeita.')) {
+                allContacts = [];
+                saveContactsToStorage();
+                applyFiltersAndDisplay();
+                summaryDiv.innerHTML = '<p class="text-red-700 font-bold">Todos os contatos foram apagados.</p>';
+            }
+        });
+
+        // --- Inicialização ---
+        document.addEventListener('DOMContentLoaded', () => {
+            allContacts = loadContactsFromStorage();
+            applyFiltersAndDisplay();
+        });
+    </script>
+</body>
+</html>
+
