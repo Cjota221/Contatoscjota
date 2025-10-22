@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exportador e Gerenciador de Contatos</title>
+    <title>CRM de Contatos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Biblioteca para ler arquivos Excel (XLS, XLSX) e CSV -->
@@ -11,93 +11,103 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* bg-slate-50 */
         }
         .file-input-label {
             transition: all 0.2s ease-in-out;
         }
         .file-input-label:hover {
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #4f46e5; /* indigo-600 */
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+<body class="text-gray-800 flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-5xl bg-white rounded-2xl shadow-lg p-6 md:p-10 space-y-8">
+    <div class="w-full max-w-7xl bg-white rounded-2xl shadow-xl p-6 md:p-10 space-y-8">
         
         <!-- Cabeçalho -->
         <div class="text-center">
-            <h1 class="text-3xl font-bold text-indigo-600">Gerenciador e Exportador de Contatos</h1>
-            <p class="text-gray-500 mt-2">Construa seu banco de dados, filtre por DDD e exporte em lotes.</p>
+            <h1 class="text-3xl font-bold text-indigo-600">CRM e Exportador de Contatos</h1>
+            <p class="text-gray-500 mt-2">Importe planilhas, gerencie etiquetas e visualize seus contatos.</p>
         </div>
         
-        <div class="grid md:grid-cols-2 gap-8">
+        <div class="grid lg:grid-cols-3 gap-8">
             <!-- Coluna da Esquerda: Importação e Filtros -->
-            <div class="space-y-6">
+            <div class="lg:col-span-1 space-y-6">
                  <!-- Passo 1: Carregar Arquivo -->
-                <div>
-                    <h2 class="text-lg font-semibold text-gray-700 mb-2">1. Adicionar Contatos</h2>
-                    <label for="fileInput" class="file-input-label flex flex-col items-center justify-center w-full h-40 px-4 transition bg-white border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-indigo-500 hover:bg-gray-100">
+                <div class="p-5 bg-gray-50 rounded-xl border border-gray-200">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-3">1. Adicionar Contatos</h2>
+                    
+                    <label for="labelInput" class="block text-sm font-medium text-gray-700">Etiqueta para este lote</label>
+                    <input type="text" id="labelInput" class="mt-1 w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="Ex: Lead Novo (detectado do nome)">
+
+                    <label for="fileInput" class="file-input-label mt-3 flex flex-col items-center justify-center w-full h-36 px-4 transition bg-white border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-indigo-500 hover:bg-gray-100">
                         <div class="flex flex-col items-center justify-center pt-5 pb-6">
                             <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                            <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Clique para carregar</span> ou arraste</p>
-                            <p class="text-xs text-gray-500">Arquivos .CSV, .XLS ou .XLSX</p>
+                            <p class="mb-2 text-sm text-gray-500 text-center"><span class="font-semibold">Clique para carregar</span> ou arraste</p>
+                            <p class="text-xs text-gray-500">.CSV, .XLS ou .XLSX</p>
                         </div>
                         <input id="fileInput" type="file" class="hidden" accept=".csv, .xls, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
                     </label>
-                    <p id="fileName" class="text-center text-sm text-gray-500 mt-2"></p>
+                    <p id="fileNameDisplay" class="text-center text-sm text-gray-500 mt-2 truncate"></p>
                     <button id="addContactsButton" class="mt-2 w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:scale-100" disabled>
-                        Adicionar Contatos ao Banco de Dados
+                        Adicionar Contatos
                     </button>
                 </div>
 
-                <!-- Passo 2: Filtros -->
-                <div class="pt-4 border-t">
-                    <h2 class="text-lg font-semibold text-gray-700 mb-2">2. Filtrar Contatos</h2>
-                     <label for="dddFilter" class="block text-sm font-medium text-gray-700">Filtrar por DDD (Ex: 62)</label>
-                    <div class="flex items-center space-x-2 mt-1">
-                        <input type="text" id="dddFilter" class="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="Digite o DDD sem o zero">
-                        <button id="filterButton" class="bg-blue-500 text-white font-semibold py-3 px-5 rounded-lg hover:bg-blue-600">Filtrar</button>
-                        <button id="clearFilterButton" class="bg-gray-500 text-white font-semibold py-3 px-5 rounded-lg hover:bg-gray-600">Limpar</button>
+                <!-- Passo 2: Filtros e Exportação -->
+                <div class="p-5 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
+                    <h2 class="text-xl font-semibold text-gray-700">2. Filtros e Exportação</h2>
+                     
+                    <div>
+                        <label for="dddFilter" class="block text-sm font-medium text-gray-700">Filtrar por DDD (Ex: 62)</label>
+                        <input type="text" id="dddFilter" class="mt-1 w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Digite o DDD sem o zero">
+                    </div>
+
+                    <div>
+                        <label for="labelFilter" class="block text-sm font-medium text-gray-700">Filtrar por Etiqueta</label>
+                        <select id="labelFilter" class="mt-1 w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="">-- Todas as Etiquetas --</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center space-x-2 pt-2">
+                        <button id="filterButton" class="w-1/2 bg-blue-500 text-white font-semibold py-3 px-5 rounded-lg hover:bg-blue-600">Filtrar</button>
+                        <button id="clearFilterButton" class="w-1/2 bg-gray-500 text-white font-semibold py-3 px-5 rounded-lg hover:bg-gray-600">Limpar</button>
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <label for="chunkSize" class="block text-sm font-medium text-gray-700">Tamanho do lote para exportação</label>
+                        <input type="number" id="chunkSize" value="200" class="mt-1 w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
                     </div>
                 </div>
 
-                 <!-- Passo 3: Exportação -->
-                 <div class="pt-4 border-t">
-                    <h2 class="text-lg font-semibold text-gray-700 mb-2">3. Exportar para CSV</h2>
-                    <label for="chunkSize" class="block text-sm font-medium text-gray-700">Tamanho do lote para exportação</label>
-                    <input type="number" id="chunkSize" value="200" class="mt-1 w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-                </div>
-                 <div class="pt-4 border-t">
+                 <!-- Zona de Perigo -->
+                 <div class="p-5 bg-red-50 rounded-xl border border-red-200">
                     <h2 class="text-lg font-semibold text-red-600 mb-2">Zona de Perigo</h2>
                     <button id="clearStorageButton" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 transition">
                         Apagar TODOS os Contatos Salvos
                     </button>
                  </div>
             </div>
+            
             <!-- Coluna da Direita: Resultados -->
-            <div id="results" class="space-y-4">
-                <div id="summary" class="text-center bg-indigo-50 p-4 rounded-lg min-h-[80px]">
-                    <!-- Resumo será inserido aqui -->
+            <div class="lg:col-span-2 space-y-4">
+                <div id="summaryDiv" class="text-center bg-indigo-50 p-4 rounded-lg min-h-[70px] flex items-center justify-center">
+                    <p class="text-gray-700 font-medium">Seu banco de dados está vazio. Comece adicionando contatos.</p>
                 </div>
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Contatos no Banco de Dados:</h3>
-                    <div class="overflow-auto max-h-64 border border-gray-200 rounded-lg">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50 sticky top-0">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
-                                </tr>
-                            </thead>
-                            <tbody id="previewTable" class="bg-white divide-y divide-gray-200">
-                                <!-- Linhas da tabela serão inseridas aqui -->
-                            </tbody>
-                        </table>
-                    </div>
+                
+                <h3 class="text-xl font-semibold text-gray-700">Visualização de Contatos</h3>
+                
+                <!-- Nova Visualização em Bloco -->
+                <div id="previewDiv" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-auto p-2 bg-gray-50 rounded-lg border">
+                    <!-- Cards de contato serão inseridos aqui -->
                 </div>
+                
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Arquivos para Download:</h3>
-                    <div id="exportButtons" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Arquivos para Download (baseado nos filtros):</h3>
+                    <div id="exportButtonsDiv" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                         <!-- Botões de download serão inseridos aqui -->
                     </div>
                 </div>
@@ -109,27 +119,44 @@
         const fileInput = document.getElementById('fileInput');
         const chunkSizeInput = document.getElementById('chunkSize');
         const addContactsButton = document.getElementById('addContactsButton');
-        const resultsDiv = document.getElementById('results');
-        const summaryDiv = document.getElementById('summary');
-        const previewTable = document.getElementById('previewTable');
-        const exportButtonsDiv = document.getElementById('exportButtons');
-        const fileNameDisplay = document.getElementById('fileName');
+        const labelInput = document.getElementById('labelInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
         const dddFilterInput = document.getElementById('dddFilter');
+        const labelFilter = document.getElementById('labelFilter');
         const filterButton = document.getElementById('filterButton');
         const clearFilterButton = document.getElementById('clearFilterButton');
         const clearStorageButton = document.getElementById('clearStorageButton');
+        
+        const summaryDiv = document.getElementById('summaryDiv');
+        const previewDiv = document.getElementById('previewDiv');
+        const exportButtonsDiv = document.getElementById('exportButtonsDiv');
 
         let allContacts = [];
         let currentlyDisplayedContacts = [];
 
         // --- Funções de Armazenamento Local ---
         const saveContactsToStorage = () => {
-            localStorage.setItem('contatosApp', JSON.stringify(allContacts));
+            try {
+                localStorage.setItem('contatosApp', JSON.stringify(allContacts));
+            } catch (e) {
+                console.error("Erro ao salvar no LocalStorage:", e);
+                summaryDiv.innerHTML = '<p class="text-red-600 font-bold">Erro: Não foi possível salvar os contatos. O armazenamento pode estar cheio.</p>';
+            }
         };
 
         const loadContactsFromStorage = () => {
-            const storedContacts = localStorage.getItem('contatosApp');
-            return storedContacts ? JSON.parse(storedContacts) : [];
+            try {
+                const storedContacts = localStorage.getItem('contatosApp');
+                const stored = storedContacts ? JSON.parse(storedContacts) : [];
+                return stored.map(c => ({ 
+                    ...c, 
+                    labels: Array.isArray(c.labels) ? c.labels : [] 
+                }));
+            } catch (e) {
+                console.error("Erro ao carregar do LocalStorage:", e);
+                localStorage.removeItem('contatosApp'); // Limpa dados corrompidos
+                return [];
+            }
         };
 
         // --- Normalização e Validação ---
@@ -144,12 +171,56 @@
             const isMostlyDigits = str.length > 0 && digitCount / str.length > 0.8;
             return str.startsWith('+') || (isMostlyDigits && letterCount < 3);
         };
+        
+        // --- Extrai etiqueta do nome do arquivo ---
+        const extractLabelFromFilename = (fileName) => {
+            const regex1 = /waspeed_aba_([^_.-]+)/i;
+            const regex2 = /waspeed - aba - ([^-.]+)/i;
+            let match = fileName.match(regex1) || fileName.match(regex2);
 
-        // --- Lógica Principal ---
+            if (match && match[1]) {
+                let label = match[1].trim().replace(/_/g, ' ');
+                return label.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+            }
+            return '';
+        };
+
+        // --- (NOVO) Encontra colunas de Nome e Telefone ---
+        const findContactColumns = (headers) => {
+            let nameIndex = -1;
+            let phoneIndex = -1;
+            
+            const whatsappKeywords = ['whatsapp', 'celular', 'contato', 'telefone', 'number', 'phone'];
+            const nameKeywords = ['nome', 'name'];
+
+            headers.forEach((header, index) => {
+                const lowerHeader = header.toLowerCase(); // Já vem em minúsculo
+                
+                if (phoneIndex === -1 && whatsappKeywords.some(keyword => lowerHeader.includes(keyword))) {
+                    phoneIndex = index;
+                }
+                
+                if (nameIndex === -1 && nameKeywords.some(keyword => lowerHeader.includes(keyword))) {
+                    nameIndex = index;
+                }
+            });
+            
+            return { nameIndex, phoneIndex };
+        };
+
+
+        // --- Lógica Principal (CRM) ---
         const processData = (data) => {
             let newContactsAdded = 0;
             let duplicatesFound = 0;
-            const existingNumbers = new Set(allContacts.map(c => normalizePhoneNumber(c.number)));
+            let labelsUpdated = 0;
+            let namesUpdated = 0;
+            
+            const newLabel = labelInput.value.trim();
+            const existingNumberMap = new Map();
+            allContacts.forEach((contact, index) => {
+                existingNumberMap.set(normalizePhoneNumber(contact.number), index);
+            });
             
             try {
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true });
@@ -157,81 +228,184 @@
                 const worksheet = workbook.Sheets[firstSheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-                if (jsonData.length <= 1) return; // Se não houver dados ou só cabeçalho
+                if (jsonData.length <= 1) throw new Error("Planilha vazia ou sem dados.");
+
+                const headers = jsonData[0].map(h => String(h).toLowerCase().trim());
+                const { nameIndex, phoneIndex } = findContactColumns(headers);
+
+                // --- (CORRIGIDO) Substitui alert() por feedback na UI ---
+                if (phoneIndex === -1) {
+                    console.error('Coluna de telefone não encontrada.');
+                    summaryDiv.innerHTML = `
+                        <div class="text-center">
+                            <p class="text-red-600 font-bold">Erro na Importação</p>
+                            <p class="text-gray-600 text-sm">Não foi possível identificar uma coluna de "WhatsApp" ou "Telefone" no arquivo.</p>
+                            <p class="text-gray-600 text-sm">A importação foi cancelada.</p>
+                        </div>
+                    `;
+                    fileInput.value = '';
+                    fileNameDisplay.textContent = '';
+                    addContactsButton.disabled = true;
+                    return;
+                }
 
                 const rowsToProcess = jsonData.slice(1);
                 
                 rowsToProcess.forEach(row => {
-                    if (row && row.length >= 2) {
-                        const number = String(row[0]).trim();
-                        const name = String(row[1]).trim();
-                        const normalizedNumber = normalizePhoneNumber(number);
+                    if (!row || row.length === 0) return; // Pula linha vazia
 
-                        if (name && number && normalizedNumber.length > 8 && !isLikelyPhoneNumber(name)) {
-                            if (!existingNumbers.has(normalizedNumber)) {
-                                allContacts.push({ name, number });
-                                existingNumbers.add(normalizedNumber);
-                                newContactsAdded++;
-                            } else {
-                                duplicatesFound++;
-                            }
+                    const number = (row.length > phoneIndex) ? String(row[phoneIndex]).trim() : '';
+                    const normalizedNumber = normalizePhoneNumber(number);
+
+                    if (!number || normalizedNumber.length <= 8) return; 
+
+                    let name = (nameIndex !== -1 && row.length > nameIndex) ? String(row[nameIndex]).trim() : '';
+                    let autoLabel = '';
+
+                    if (!name || isLikelyPhoneNumber(name)) {
+                        name = '.';
+                        autoLabel = 'Sem Nome'; // Etiqueta automática
+                    }
+
+                    const existingContactIndex = existingNumberMap.get(normalizedNumber);
+                    
+                    if (existingContactIndex !== undefined) {
+                        duplicatesFound++;
+                        const contact = allContacts[existingContactIndex];
+                        
+                        if (name !== '.' && contact.name === '.') {
+                            contact.name = name;
+                            namesUpdated++;
+                            contact.labels = contact.labels.filter(l => l !== 'Sem Nome'); // Remove "Sem Nome"
                         }
+
+                        if (newLabel && !contact.labels.includes(newLabel)) {
+                            contact.labels.push(newLabel);
+                            labelsUpdated++;
+                        }
+                        if (autoLabel && !contact.labels.includes(autoLabel) && contact.name === '.') {
+                             contact.labels.push(autoLabel);
+                        }
+                        
+                    } else {
+                        newContactsAdded++;
+                        const labels = [];
+                        if (newLabel) labels.push(newLabel);
+                        if (autoLabel) labels.push(autoLabel);
+                        
+                        const newContact = { name, number, labels };
+                        allContacts.push(newContact);
+                        existingNumberMap.set(normalizedNumber, allContacts.length - 1);
                     }
                 });
 
                 saveContactsToStorage();
                 summaryDiv.innerHTML = `
-                    <p class="text-green-700 font-semibold">Processamento concluído!</p>
-                    <p class="text-sm text-gray-600">Adicionados: <span class="font-bold">${newContactsAdded}</span> novos contatos.</p>
-                    <p class="text-sm text-gray-600">Duplicados ignorados: <span class="font-bold">${duplicatesFound}</span>.</p>
+                    <div class="text-center">
+                        <p class="text-green-700 font-semibold">Processamento concluído!</p>
+                        <p class="text-sm text-gray-600">
+                            <span class="font-bold">${newContactsAdded}</span> novos | 
+                            <span class="font-bold">${namesUpdated}</span> nomes atualizados | 
+                            <span class="font-bold">${labelsUpdated}</span> etiquetas adicionadas
+                        </p>
+                    </div>
                 `;
+                labelInput.value = '';
+                fileInput.value = '';
+                fileNameDisplay.textContent = '';
+                addContactsButton.disabled = true;
+
                 applyFiltersAndDisplay();
+
             } catch (e) {
                 console.error("Erro ao processar o arquivo:", e);
-                summaryDiv.innerHTML = '<p class="text-red-600 font-medium">Ocorreu um erro ao ler o arquivo. Verifique o formato.</p>';
+                summaryDiv.innerHTML = `<p class="text-red-600 font-medium">Ocorreu um erro ao ler o arquivo. Verifique o formato. (${e.message})</p>`;
             }
         };
         
         const applyFiltersAndDisplay = () => {
             const ddd = dddFilterInput.value.trim();
+            const selectedLabel = labelFilter.value;
+            
+            let filteredContacts = [...allContacts];
+            
             if (ddd && /^\d{2}$/.test(ddd)) {
-                 currentlyDisplayedContacts = allContacts.filter(contact => {
+                 filteredContacts = filteredContacts.filter(contact => {
                     const normalized = normalizePhoneNumber(contact.number);
-                    // Checa se começa com 55 + DDD ou se não tem 55 e começa com o DDD
-                    return normalized.startsWith(`55${ddd}`) || (normalized.length === 10 || normalized.length === 11 && normalized.startsWith(ddd));
+                    return normalized.startsWith(`55${ddd}`) || (normalized.length <= 11 && normalized.startsWith(ddd));
                  });
-            } else {
-                currentlyDisplayedContacts = [...allContacts];
             }
+
+            if (selectedLabel) {
+                filteredContacts = filteredContacts.filter(contact => contact.labels.includes(selectedLabel));
+            }
+            
+            currentlyDisplayedContacts = filteredContacts;
             updateDisplay(currentlyDisplayedContacts);
         };
         
+        // --- Funções Auxiliares ---
+        const updateLabelFilterDropdown = () => {
+            const currentSelection = labelFilter.value;
+            const allLabels = new Set();
+            allContacts.forEach(contact => {
+                contact.labels.forEach(label => allLabels.add(label));
+            });
+            
+            labelFilter.innerHTML = '<option value="">-- Todas as Etiquetas --</option>'; 
+            const sortedLabels = Array.from(allLabels).sort();
+            
+            sortedLabels.forEach(label => {
+                const option = document.createElement('option');
+                option.value = label;
+                option.textContent = label;
+                if (label === currentSelection) option.selected = true;
+                labelFilter.appendChild(option);
+            });
+        };
+
         const updateDisplay = (contactsToDisplay) => {
-            previewTable.innerHTML = '';
+            previewDiv.innerHTML = '';
             exportButtonsDiv.innerHTML = '';
+
+            updateLabelFilterDropdown(); 
 
             const totalInDb = allContacts.length;
             const totalDisplayed = contactsToDisplay.length;
             
-            if (totalInDb === 0 && summaryDiv.innerHTML.includes('Processamento')) {
-                // Não sobrescrever a mensagem de processamento se o DB estava vazio
-            } else if (totalDisplayed === 0) {
-                 summaryDiv.innerHTML = `<p class="text-gray-700 font-medium">Seu banco de dados tem <span class="font-bold">${totalInDb}</span> contatos. Nenhum contato corresponde ao filtro atual.</p>`;
-            } else {
+            if (totalInDb === 0 && !summaryDiv.innerHTML.includes('Erro')) {
+                 summaryDiv.innerHTML = `<p class="text-gray-700 font-medium">Seu banco de dados está vazio. Comece adicionando contatos.</p>`;
+            } else if (totalDisplayed === 0 && totalInDb > 0) {
+                 summaryDiv.innerHTML = `<p class="text-gray-700 font-medium">Seu banco de dados tem <span class="font-bold">${totalInDb}</span> contatos. Nenhum corresponde ao filtro atual.</p>`;
+            } else if (totalDisplayed > 0) {
                 summaryDiv.innerHTML = `<p class="text-indigo-800 font-semibold">Exibindo <span class="font-bold">${totalDisplayed}</span> de <span class="font-bold">${totalInDb}</span> contatos totais.</p>`;
             }
 
+            // Mostra os contatos como "Cards"
+            contactsToDisplay.forEach(contact => {
+                const card = document.createElement('div');
+                card.className = "p-4 bg-white border border-gray-200 rounded-lg shadow-sm space-y-2";
 
-            const previewLimit = Math.min(100, contactsToDisplay.length);
-            for (let i = 0; i < previewLimit; i++) {
-                const contact = contactsToDisplay[i];
-                const row = `<tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${contact.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${contact.number}</td>
-                </tr>`;
-                previewTable.innerHTML += row;
-            }
+                // Gera as etiquetas coloridas
+                const labelsHtml = contact.labels.map(label => {
+                    let colorClass = 'bg-indigo-100 text-indigo-800'; // Padrão
+                    if (label === 'Sem Nome') {
+                        colorClass = 'bg-yellow-100 text-yellow-800'; // Destaque
+                    }
+                    return `<span class="px-2 py-0.5 ${colorClass} rounded-full text-xs font-medium">${label}</span>`;
+                }).join(' ');
 
+                card.innerHTML = `
+                    <h4 class="text-base font-semibold text-gray-900 truncate">${contact.name}</h4>
+                    <p class="text-sm text-gray-600">${contact.number}</p>
+                    <div class="flex flex-wrap gap-1 pt-1">
+                        ${labelsHtml || '<span class="text-xs text-gray-400">Sem etiquetas</span>'}
+                    </div>
+                `;
+                previewDiv.appendChild(card);
+            });
+
+            // Gera botões de exportação
             const chunkSize = parseInt(chunkSizeInput.value, 10) || 200;
             const numChunks = Math.ceil(totalDisplayed / chunkSize);
 
@@ -255,7 +429,8 @@
             let csvContent = 'Nome,Numero\r\n';
             chunkData.forEach(contact => {
                 const name = contact.name.includes(',') ? `"${contact.name}"` : contact.name;
-                csvContent += `${name},${contact.number}\r\n`;
+                const number = String(contact.number).replace(/\D/g, ''); // Garante só dígitos
+                csvContent += `${name},${number}\r\n`;
             });
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -272,11 +447,19 @@
         // --- Event Listeners ---
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const fileName = file.name;
+                
                 addContactsButton.disabled = false;
-                fileNameDisplay.textContent = `Arquivo selecionado: ${fileInput.files[0].name}`;
+                fileNameDisplay.textContent = fileName;
+                
+                const extractedLabel = extractLabelFromFilename(fileName);
+                labelInput.value = extractedLabel;
+                
             } else {
                 addContactsButton.disabled = true;
                 fileNameDisplay.textContent = '';
+                labelInput.value = '';
             }
         });
         
@@ -284,23 +467,34 @@
             const file = fileInput.files[0];
             if (!file) return;
 
+            addContactsButton.disabled = true;
+            summaryDiv.innerHTML = '<p class="text-blue-600 font-medium">Processando arquivo, por favor aguarde...</p>';
+
             const reader = new FileReader();
             reader.onload = (event) => processData(event.target.result);
+            reader.onerror = (e) => {
+                 summaryDiv.innerHTML = '<p class="text-red-600 font-medium">Erro ao ler o arquivo.</p>';
+                 addContactsButton.disabled = false;
+            };
             reader.readAsArrayBuffer(file);
         });
 
         filterButton.addEventListener('click', applyFiltersAndDisplay);
+        
         clearFilterButton.addEventListener('click', () => {
             dddFilterInput.value = '';
+            labelFilter.value = '';
             applyFiltersAndDisplay();
         });
 
         clearStorageButton.addEventListener('click', () => {
-            if (confirm('Tem certeza que deseja apagar TODOS os contatos salvos? Esta ação não pode ser desfeita.')) {
+            if (prompt("Para confirmar, digite 'APAGAR' (em maiúsculas) e clique OK. Esta ação não pode ser desfeita.") === 'APAGAR') {
                 allContacts = [];
                 saveContactsToStorage();
                 applyFiltersAndDisplay();
                 summaryDiv.innerHTML = '<p class="text-red-700 font-bold">Todos os contatos foram apagados.</p>';
+            } else {
+                console.log("Ação de apagar cancelada.");
             }
         });
 
