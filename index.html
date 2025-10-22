@@ -20,6 +20,31 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             border-color: #4f46e5; /* indigo-600 */
         }
+        /* Para esconder a barra de rolagem mas permitir rolar */
+        #previewDiv::-webkit-scrollbar {
+            width: 0.5em;
+        }
+        #previewDiv::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #previewDiv::-webkit-scrollbar-thumb {
+            background: #d1d5db; /* bg-gray-300 */
+            border-radius: 9999px;
+        }
+        #previewDiv {
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db transparent;
+        }
+        /* (NOVO) Animação de "tremor" para erro de confirmação */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake-error {
+            animation: shake 0.3s ease-in-out;
+            border-color: #ef4444; /* red-500 */
+        }
     </style>
 </head>
 <body class="text-gray-800 flex items-center justify-center min-h-screen p-4">
@@ -94,8 +119,15 @@
             
             <!-- Coluna da Direita: Resultados -->
             <div class="lg:col-span-2 space-y-4">
-                <div id="summaryDiv" class="text-center bg-indigo-50 p-4 rounded-lg min-h-[70px] flex items-center justify-center">
-                    <p class="text-gray-700 font-medium">Seu banco de dados está vazio. Comece adicionando contatos.</p>
+                <!-- Barra de Busca -->
+                <div>
+                    <label for="searchBar" class="block text-sm font-medium text-gray-700">Buscar Contato (Nome, Número ou Etiqueta)</label>
+                    <input type="text" id="searchBar" class="mt-1 w-full p-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Digite para buscar...">
+                </div>
+
+                <!-- Dashboard de Estatísticas -->
+                <div id="summaryDiv" class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-indigo-50 p-4 rounded-lg text-center">
+                    <!-- Estatísticas serão inseridas aqui -->
                 </div>
                 
                 <h3 class="text-xl font-semibold text-gray-700">Visualização de Contatos</h3>
@@ -115,6 +147,59 @@
         </div>
     </div>
 
+    <!-- Modal de Edição -->
+    <div id="editModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl p-6 space-y-4">
+            <h2 class="text-2xl font-bold text-gray-800">Editar Contato</h2>
+            <input type="hidden" id="editContactIndex">
+            
+            <div>
+                <label for="editName" class="block text-sm font-medium text-gray-700">Nome</label>
+                <input type="text" id="editName" class="mt-1 w-full p-3 bg-gray-50 border border-gray-300 rounded-lg">
+            </div>
+            
+            <div>
+                <label for="editNumber" class="block text-sm font-medium text-gray-700">Número (ID - não pode ser alterado)</label>
+                <input type="text" id="editNumber" class="mt-1 w-full p-3 bg-gray-200 border border-gray-300 rounded-lg" readonly>
+            </div>
+            
+            <div>
+                <label for="editLabels" class="block text-sm font-medium text-gray-700">Etiquetas (separadas por vírgula)</label>
+                <input type="text" id="editLabels" class="mt-1 w-full p-3 bg-gray-50 border border-gray-300 rounded-lg">
+            </div>
+            
+            <div>
+                <label for="editNotes" class="block text-sm font-medium text-gray-700">Anotações</label>
+                <textarea id="editNotes" rows="4" class="mt-1 w-full p-3 bg-gray-50 border border-gray-300 rounded-lg"></textarea>
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-2">
+                <button id="cancelEdit" class="bg-gray-500 text-white font-semibold py-2 px-5 rounded-lg hover:bg-gray-600">Cancelar</button>
+                <button id="saveEdit" class="bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-indigo-700">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- (NOVO) Modal de Confirmação (Substitui o prompt()) -->
+    <div id="confirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center p-4 z-[60]">
+        <div class="bg-white w-full max-w-md rounded-xl shadow-2xl p-6 space-y-4">
+            <h2 class="text-xl font-bold text-red-600">Ação de Risco</h2>
+            <p id="confirmMessage" class="text-gray-700 whitespace-pre-wrap">Tem certeza que deseja fazer isso?</p>
+            
+            <div>
+                <label for="confirmInput" class="block text-sm font-medium text-gray-700">Para confirmar, digite o texto abaixo:</label>
+                <input type="text" id="confirmInput" class="mt-1 w-full p-3 bg-gray-50 border border-gray-300 rounded-lg" placeholder="CONFIRMAR">
+                <p id="confirmError" class="text-red-500 text-sm mt-1 hidden">O texto não corresponde.</p>
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-2">
+                <button id="cancelConfirm" class="bg-gray-500 text-white font-semibold py-2 px-5 rounded-lg hover:bg-gray-600">Cancelar</button>
+                <button id="confirmButton" class="bg-red-600 text-white font-semibold py-2 px-5 rounded-lg hover:bg-red-700">Confirmar Ação</button>
+            </div>
+        </div>
+    </div>
+
+
     <script>
         const fileInput = document.getElementById('fileInput');
         const chunkSizeInput = document.getElementById('chunkSize');
@@ -126,10 +211,30 @@
         const filterButton = document.getElementById('filterButton');
         const clearFilterButton = document.getElementById('clearFilterButton');
         const clearStorageButton = document.getElementById('clearStorageButton');
+        const searchBar = document.getElementById('searchBar');
         
         const summaryDiv = document.getElementById('summaryDiv');
         const previewDiv = document.getElementById('previewDiv');
         const exportButtonsDiv = document.getElementById('exportButtonsDiv');
+
+        // Elementos do Modal de Edição
+        const editModal = document.getElementById('editModal');
+        const cancelEdit = document.getElementById('cancelEdit');
+        const saveEdit = document.getElementById('saveEdit');
+        const editContactIndex = document.getElementById('editContactIndex');
+        const editName = document.getElementById('editName');
+        const editNumber = document.getElementById('editNumber');
+        const editLabels = document.getElementById('editLabels');
+        const editNotes = document.getElementById('editNotes');
+
+        // (NOVOS) Elementos do Modal de Confirmação
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmMessage = document.getElementById('confirmMessage');
+        const confirmInput = document.getElementById('confirmInput');
+        const confirmError = document.getElementById('confirmError');
+        const cancelConfirm = document.getElementById('cancelConfirm');
+        const confirmButton = document.getElementById('confirmButton');
+        let _onConfirmCallback = null; // Armazena a ação a ser executada
 
         let allContacts = [];
         let currentlyDisplayedContacts = [];
@@ -150,18 +255,19 @@
                 const stored = storedContacts ? JSON.parse(storedContacts) : [];
                 return stored.map(c => ({ 
                     ...c, 
-                    labels: Array.isArray(c.labels) ? c.labels : [] 
+                    labels: Array.isArray(c.labels) ? c.labels : [],
+                    notes: c.notes || '' 
                 }));
             } catch (e) {
                 console.error("Erro ao carregar do LocalStorage:", e);
-                localStorage.removeItem('contatosApp'); // Limpa dados corrompidos
+                localStorage.removeItem('contatosApp'); 
                 return [];
             }
         };
 
         // --- Normalização e Validação ---
         const normalizePhoneNumber = (phone) => {
-            return String(phone).replace(/\D/g, ''); // Remove todos os não-dígitos
+            return String(phone).replace(/\D/g, ''); 
         };
         
         const isLikelyPhoneNumber = (str) => {
@@ -185,27 +291,34 @@
             return '';
         };
 
-        // --- (NOVO) Encontra colunas de Nome e Telefone ---
+        // --- (ATUALIZADO) Encontra colunas de Nome e Telefone (incluindo fn, ln) ---
         const findContactColumns = (headers) => {
-            let nameIndex = -1;
+            let nameIndex = -1, lnIndex = -1, fnIndex = -1;
             let phoneIndex = -1;
             
             const whatsappKeywords = ['whatsapp', 'celular', 'contato', 'telefone', 'number', 'phone'];
             const nameKeywords = ['nome', 'name'];
+            const fnKeywords = ['fn', 'first name', 'primeiro nome'];
+            const lnKeywords = ['ln', 'last name', 'sobrenome'];
 
             headers.forEach((header, index) => {
-                const lowerHeader = header.toLowerCase(); // Já vem em minúsculo
+                const lowerHeader = String(header).toLowerCase().trim();
                 
                 if (phoneIndex === -1 && whatsappKeywords.some(keyword => lowerHeader.includes(keyword))) {
                     phoneIndex = index;
                 }
-                
                 if (nameIndex === -1 && nameKeywords.some(keyword => lowerHeader.includes(keyword))) {
                     nameIndex = index;
                 }
+                if (fnIndex === -1 && fnKeywords.some(keyword => lowerHeader.includes(keyword))) {
+                    fnIndex = index;
+                }
+                if (lnIndex === -1 && lnKeywords.some(keyword => lowerHeader.includes(keyword))) {
+                    lnIndex = index;
+                }
             });
             
-            return { nameIndex, phoneIndex };
+            return { nameIndex, phoneIndex, fnIndex, lnIndex };
         };
 
 
@@ -231,13 +344,12 @@
                 if (jsonData.length <= 1) throw new Error("Planilha vazia ou sem dados.");
 
                 const headers = jsonData[0].map(h => String(h).toLowerCase().trim());
-                const { nameIndex, phoneIndex } = findContactColumns(headers);
+                const { nameIndex, phoneIndex, fnIndex, lnIndex } = findContactColumns(headers);
 
-                // --- (CORRIGIDO) Substitui alert() por feedback na UI ---
                 if (phoneIndex === -1) {
                     console.error('Coluna de telefone não encontrada.');
                     summaryDiv.innerHTML = `
-                        <div class="text-center">
+                        <div class="text-center col-span-2 md:col-span-4">
                             <p class="text-red-600 font-bold">Erro na Importação</p>
                             <p class="text-gray-600 text-sm">Não foi possível identificar uma coluna de "WhatsApp" ou "Telefone" no arquivo.</p>
                             <p class="text-gray-600 text-sm">A importação foi cancelada.</p>
@@ -252,19 +364,25 @@
                 const rowsToProcess = jsonData.slice(1);
                 
                 rowsToProcess.forEach(row => {
-                    if (!row || row.length === 0) return; // Pula linha vazia
+                    if (!row || row.length === 0) return; 
 
                     const number = (row.length > phoneIndex) ? String(row[phoneIndex]).trim() : '';
                     const normalizedNumber = normalizePhoneNumber(number);
 
                     if (!number || normalizedNumber.length <= 8) return; 
 
-                    let name = (nameIndex !== -1 && row.length > nameIndex) ? String(row[nameIndex]).trim() : '';
+                    // (ATUALIZADO) Lógica de nome com fn/ln
+                    let name = '';
+                    if (fnIndex !== -1 && lnIndex !== -1) {
+                        name = `${row[fnIndex] || ''} ${row[lnIndex] || ''}`.trim();
+                    } else if (nameIndex !== -1) {
+                        name = (row.length > nameIndex) ? String(row[nameIndex]).trim() : '';
+                    }
+                    
                     let autoLabel = '';
-
                     if (!name || isLikelyPhoneNumber(name)) {
                         name = '.';
-                        autoLabel = 'Sem Nome'; // Etiqueta automática
+                        autoLabel = 'Sem Nome'; 
                     }
 
                     const existingContactIndex = existingNumberMap.get(normalizedNumber);
@@ -276,7 +394,7 @@
                         if (name !== '.' && contact.name === '.') {
                             contact.name = name;
                             namesUpdated++;
-                            contact.labels = contact.labels.filter(l => l !== 'Sem Nome'); // Remove "Sem Nome"
+                            contact.labels = contact.labels.filter(l => l !== 'Sem Nome'); 
                         }
 
                         if (newLabel && !contact.labels.includes(newLabel)) {
@@ -293,7 +411,7 @@
                         if (newLabel) labels.push(newLabel);
                         if (autoLabel) labels.push(autoLabel);
                         
-                        const newContact = { name, number, labels };
+                        const newContact = { name, number, labels, notes: '' };
                         allContacts.push(newContact);
                         existingNumberMap.set(normalizedNumber, allContacts.length - 1);
                     }
@@ -301,7 +419,7 @@
 
                 saveContactsToStorage();
                 summaryDiv.innerHTML = `
-                    <div class="text-center">
+                    <div class="text-center col-span-2 md:col-span-4 py-2">
                         <p class="text-green-700 font-semibold">Processamento concluído!</p>
                         <p class="text-sm text-gray-600">
                             <span class="font-bold">${newContactsAdded}</span> novos | 
@@ -319,15 +437,27 @@
 
             } catch (e) {
                 console.error("Erro ao processar o arquivo:", e);
-                summaryDiv.innerHTML = `<p class="text-red-600 font-medium">Ocorreu um erro ao ler o arquivo. Verifique o formato. (${e.message})</p>`;
+                summaryDiv.innerHTML = `<p class="text-red-600 font-medium col-span-2 md:col-span-4">Ocorreu um erro ao ler o arquivo. Verifique o formato. (${e.message})</p>`;
             }
         };
         
+        // Filtro de busca adicionado
         const applyFiltersAndDisplay = () => {
             const ddd = dddFilterInput.value.trim();
             const selectedLabel = labelFilter.value;
-            
+            const searchTerm = searchBar.value.toLowerCase().trim();
+
             let filteredContacts = [...allContacts];
+
+            if (searchTerm) {
+                filteredContacts = filteredContacts.filter(contact => {
+                    const nameMatch = contact.name.toLowerCase().includes(searchTerm);
+                    const numberMatch = contact.number.toLowerCase().includes(searchTerm);
+                    const labelsMatch = contact.labels.some(l => l.toLowerCase().includes(searchTerm));
+                    const notesMatch = contact.notes.toLowerCase().includes(searchTerm);
+                    return nameMatch || numberMatch || labelsMatch || notesMatch;
+                });
+            }
             
             if (ddd && /^\d{2}$/.test(ddd)) {
                  filteredContacts = filteredContacts.filter(contact => {
@@ -364,29 +494,52 @@
             });
         };
 
+        // updateDisplay agora inclui Dashboard, Cards com botões e Anotações
         const updateDisplay = (contactsToDisplay) => {
             previewDiv.innerHTML = '';
             exportButtonsDiv.innerHTML = '';
 
             updateLabelFilterDropdown(); 
 
+            // --- Dashboard de Estatísticas ---
             const totalInDb = allContacts.length;
             const totalDisplayed = contactsToDisplay.length;
-            
-            if (totalInDb === 0 && !summaryDiv.innerHTML.includes('Erro')) {
-                 summaryDiv.innerHTML = `<p class="text-gray-700 font-medium">Seu banco de dados está vazio. Comece adicionando contatos.</p>`;
-            } else if (totalDisplayed === 0 && totalInDb > 0) {
-                 summaryDiv.innerHTML = `<p class="text-gray-700 font-medium">Seu banco de dados tem <span class="font-bold">${totalInDb}</span> contatos. Nenhum corresponde ao filtro atual.</p>`;
-            } else if (totalDisplayed > 0) {
-                summaryDiv.innerHTML = `<p class="text-indigo-800 font-semibold">Exibindo <span class="font-bold">${totalDisplayed}</span> de <span class="font-bold">${totalInDb}</span> contatos totais.</p>`;
+            const totalSemNome = allContacts.filter(c => c.name === '.' || c.labels.includes('Sem Nome')).length;
+            const totalLabels = new Set(allContacts.flatMap(c => c.labels)).size;
+
+            if (!summaryDiv.innerHTML.includes('Erro') && !summaryDiv.innerHTML.includes('Processamento')) {
+                summaryDiv.innerHTML = `
+                    <div class="p-2">
+                        <p class="text-sm text-gray-600">Total de Contatos</p>
+                        <p class="text-2xl font-bold text-indigo-600">${totalInDb}</p>
+                    </div>
+                    <div class="p-2">
+                        <p class="text-sm text-gray-600">Contatos "Sem Nome"</p>
+                        <p class="text-2xl font-bold text-yellow-600">${totalSemNome}</p>
+                    </div>
+                    <div class="p-2">
+                        <p class="text-sm text-gray-600">Etiquetas Únicas</p>
+                        <p class="text-2xl font-bold text-blue-600">${totalLabels}</p>
+                    </div>
+                    <div class="p-2">
+                        <p class="text-sm text-gray-600">Exibidos (Filtro)</p>
+                        <p class="text-2xl font-bold text-green-600">${totalDisplayed}</p>
+                    </div>
+                `;
             }
+            if (totalInDb === 0 && !summaryDiv.innerHTML.includes('Erro')) {
+                 summaryDiv.innerHTML = `<p class="text-gray-700 font-medium col-span-2 md:col-span-4">Seu banco de dados está vazio. Comece adicionando contatos.</p>`;
+            }
+            // --- Fim do Dashboard ---
 
             // Mostra os contatos como "Cards"
             contactsToDisplay.forEach(contact => {
-                const card = document.createElement('div');
-                card.className = "p-4 bg-white border border-gray-200 rounded-lg shadow-sm space-y-2";
+                const originalIndex = allContacts.findIndex(c => c.number === contact.number);
+                if (originalIndex === -1) return; 
 
-                // Gera as etiquetas coloridas
+                const card = document.createElement('div');
+                card.className = "p-4 bg-white border border-gray-200 rounded-lg shadow-sm space-y-2 relative";
+
                 const labelsHtml = contact.labels.map(label => {
                     let colorClass = 'bg-indigo-100 text-indigo-800'; // Padrão
                     if (label === 'Sem Nome') {
@@ -395,12 +548,31 @@
                     return `<span class="px-2 py-0.5 ${colorClass} rounded-full text-xs font-medium">${label}</span>`;
                 }).join(' ');
 
+                let noteSnippet = '';
+                if (contact.notes) {
+                    const firstLine = contact.notes.split('\n')[0];
+                    noteSnippet = `<p class="text-xs text-gray-500 italic truncate pt-1"><span class="font-medium">Nota:</span> ${firstLine}</p>`;
+                }
+
+                const actionButtons = `
+                    <div class="absolute top-2 right-2 flex space-x-1">
+                        <button onclick="showEditModal(${originalIndex})" class="p-1 text-blue-600 hover:bg-blue-100 rounded-full transition" title="Editar Contato">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM5 12V7a1 1 0 011-1h2.172a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V15a1 1 0 01-1 1h-2.172a1 1 0 01-.707-.293L5.293 8.707A1 1 0 015 8V7z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+                        </button>
+                        <button onclick="deleteContact(${originalIndex})" class="p-1 text-red-600 hover:bg-red-100 rounded-full transition" title="Excluir Contato">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 6h6v10H7V6zm2 2v6h2V8H9z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                `;
+
                 card.innerHTML = `
-                    <h4 class="text-base font-semibold text-gray-900 truncate">${contact.name}</h4>
+                    ${actionButtons}
+                    <h4 class="text-base font-semibold text-gray-900 truncate pr-16">${contact.name}</h4>
                     <p class="text-sm text-gray-600">${contact.number}</p>
                     <div class="flex flex-wrap gap-1 pt-1">
                         ${labelsHtml || '<span class="text-xs text-gray-400">Sem etiquetas</span>'}
                     </div>
+                    ${noteSnippet}
                 `;
                 previewDiv.appendChild(card);
             });
@@ -429,7 +601,7 @@
             let csvContent = 'Nome,Numero\r\n';
             chunkData.forEach(contact => {
                 const name = contact.name.includes(',') ? `"${contact.name}"` : contact.name;
-                const number = String(contact.number).replace(/\D/g, ''); // Garante só dígitos
+                const number = String(contact.number).replace(/\D/g, ''); 
                 csvContent += `${name},${number}\r\n`;
             });
             
@@ -442,6 +614,104 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        };
+
+        // --- Funções do Modal de Edição ---
+        window.showEditModal = (index) => {
+            const contact = allContacts[index];
+            if (!contact) return;
+            
+            editContactIndex.value = index;
+            editName.value = contact.name;
+            editNumber.value = contact.number; 
+            editLabels.value = contact.labels.join(', '); 
+            editNotes.value = contact.notes || '';
+            
+            editModal.classList.remove('hidden');
+        };
+
+        const hideEditModal = () => {
+            editModal.classList.add('hidden');
+        };
+
+        const saveContactChanges = () => {
+            const index = parseInt(editContactIndex.value, 10);
+            if (isNaN(index) || index < 0 || index >= allContacts.length) return;
+            
+            const contact = allContacts[index];
+            contact.name = editName.value.trim() || '.';
+            
+            contact.labels = editLabels.value
+                .split(',')
+                .map(l => l.trim().toLowerCase().replace(/\b\w/g, char => char.toUpperCase())) 
+                .filter(l => l); 
+
+            contact.notes = editNotes.value.trim();
+            
+            if (contact.name !== '.') {
+                contact.labels = contact.labels.filter(l => l !== 'Sem Nome');
+            } else if (!contact.labels.includes('Sem Nome') && contact.name === '.') {
+                contact.labels.push('Sem Nome');
+            }
+            contact.labels = [...new Set(contact.labels)];
+
+            saveContactsToStorage();
+            applyFiltersAndDisplay();
+            hideEditModal();
+        };
+        
+        // --- (NOVO) Funções do Modal de Confirmação ---
+        const showConfirmModal = (message, expectedText, onConfirm) => {
+            confirmMessage.textContent = message;
+            confirmInput.value = '';
+            confirmInput.placeholder = expectedText;
+            confirmError.classList.add('hidden');
+            _onConfirmCallback = onConfirm; // Armazena a função
+            confirmModal.classList.remove('hidden');
+        };
+
+        const hideConfirmModal = () => {
+            confirmModal.classList.add('hidden');
+            _onConfirmCallback = null;
+        };
+
+        confirmButton.addEventListener('click', () => {
+            if (confirmInput.value === confirmInput.placeholder) {
+                if (typeof _onConfirmCallback === 'function') {
+                    _onConfirmCallback(); // Executa a ação
+                }
+                hideConfirmModal();
+            } else {
+                confirmError.classList.remove('hidden');
+                confirmInput.classList.add('shake-error');
+                setTimeout(() => {
+                    confirmInput.classList.remove('shake-error');
+                }, 300);
+            }
+        });
+
+        cancelConfirm.addEventListener('click', hideConfirmModal);
+        
+        // --- (ATUALIZADO) Função de Deletar Contato (agora usa o modal) ---
+        window.deleteContact = (index) => {
+            const contact = allContacts[index];
+            if (!contact) return;
+            
+            const message = `Tem certeza que deseja apagar "${contact.name} (${contact.number})"?\n\nEsta ação não pode ser desfeita.`;
+            showConfirmModal(message, 'SIM', () => {
+                allContacts.splice(index, 1); 
+                saveContactsToStorage();
+                applyFiltersAndDisplay();
+                
+                setTimeout(() => {
+                    if (allContacts.length > 0) {
+                        applyFiltersAndDisplay(); 
+                    } else {
+                        summaryDiv.innerHTML = '<p class="text-red-700 font-bold col-span-2 md:col-span-4">Todos os contatos foram apagados.</p>';
+                        updateDisplay([]);
+                    }
+                }, 100);
+            });
         };
 
         // --- Event Listeners ---
@@ -468,15 +738,19 @@
             if (!file) return;
 
             addContactsButton.disabled = true;
-            summaryDiv.innerHTML = '<p class="text-blue-600 font-medium">Processando arquivo, por favor aguarde...</p>';
+            summaryDiv.innerHTML = '<p class="text-blue-600 font-medium col-span-2 md:col-span-4">Processando arquivo, por favor aguarde...</p>';
 
             const reader = new FileReader();
             reader.onload = (event) => processData(event.target.result);
             reader.onerror = (e) => {
-                 summaryDiv.innerHTML = '<p class="text-red-600 font-medium">Erro ao ler o arquivo.</p>';
+                 summaryDiv.innerHTML = '<p class="text-red-600 font-medium col-span-2 md:col-span-4">Erro ao ler o arquivo.</p>';
                  addContactsButton.disabled = false;
             };
             reader.readAsArrayBuffer(file);
+        });
+
+        searchBar.addEventListener('input', () => {
+             setTimeout(applyFiltersAndDisplay, 200);
         });
 
         filterButton.addEventListener('click', applyFiltersAndDisplay);
@@ -484,24 +758,34 @@
         clearFilterButton.addEventListener('click', () => {
             dddFilterInput.value = '';
             labelFilter.value = '';
+            searchBar.value = ''; 
             applyFiltersAndDisplay();
         });
 
+        // (ATUALIZADO) clearStorageButton (agora usa o modal)
         clearStorageButton.addEventListener('click', () => {
-            if (prompt("Para confirmar, digite 'APAGAR' (em maiúsculas) e clique OK. Esta ação não pode ser desfeita.") === 'APAGAR') {
+            const message = "Para confirmar, digite 'APAGAR' (em maiúsculas) e clique OK.\n\nEsta ação não pode ser desfeita e apagará TODOS os contatos.";
+            showConfirmModal(message, 'APAGAR', () => {
                 allContacts = [];
                 saveContactsToStorage();
                 applyFiltersAndDisplay();
-                summaryDiv.innerHTML = '<p class="text-red-700 font-bold">Todos os contatos foram apagados.</p>';
-            } else {
-                console.log("Ação de apagar cancelada.");
-            }
+                summaryDiv.innerHTML = '<p class="text-red-700 font-bold col-span-2 md:col-span-4">Todos os contatos foram apagados.</p>';
+            });
         });
+
+        // Listeners do Modal de Edição
+        saveEdit.addEventListener('click', saveContactChanges);
+        cancelEdit.addEventListener('click', hideEditModal);
 
         // --- Inicialização ---
         document.addEventListener('DOMContentLoaded', () => {
-            allContacts = loadContactsFromStorage();
-            applyFiltersAndDisplay();
+            try {
+                allContacts = loadContactsFromStorage();
+                applyFiltersAndDisplay();
+            } catch (e) {
+                console.error("Erro fatal na inicialização:", e);
+                document.body.innerHTML = `<div class="p-10 text-center"><h1 class="text-2xl text-red-600">Erro Crítico</h1><p>Não foi possível carregar a aplicação. Tente limpar o cache do seu navegador.</p><p>${e.message}</p></div>`;
+            }
         });
     </script>
 </body>
